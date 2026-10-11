@@ -35,12 +35,7 @@ const isServerError = (statusCode: number): boolean => {
   return statusCode >= DEFAULT_ERROR_STATUS_CODE;
 };
 
-const logError = (
-  error: unknown,
-  method: string,
-  path: string,
-  statusCode: number,
-): void => {
+const logError = (error: unknown, method: string, path: string, statusCode: number): void => {
   const logData = {
     err: error,
     method,
@@ -49,11 +44,11 @@ const logError = (
   };
 
   if (isServerError(statusCode)) {
-    logger.error(logData, 'Request failed');
+    logger.error(logData, 'La solicitud falló');
     return;
   }
 
-  logger.warn(logData, 'Request failed');
+  logger.warn(logData, 'La solicitud falló');
 };
 
 const notFoundHandler: RequestHandler = (req, res) => {
@@ -64,12 +59,7 @@ const notFoundHandler: RequestHandler = (req, res) => {
   });
 };
 
-const errorHandler: ErrorRequestHandler = (
-  error,
-  req,
-  res,
-  _next,
-) => {
+const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   const statusCode = getStatusCode(error);
   const message = getMessage(error);
 

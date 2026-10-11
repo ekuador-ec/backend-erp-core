@@ -15,7 +15,11 @@ import {
 } from '../data/sendProformaConfig.js';
 import type { SendProformaModel } from '../data/sendProformaModel.js';
 import { getCompanyTransporter, isFileAccessError } from '../email/sendProformaTransporter.js';
-import { buildSendProformaEmailBody, resolveDocumentPath, validateDocumentAccess } from '../email/sendProformaTemplate.js';
+import {
+  buildSendProformaEmailBody,
+  resolveDocumentPath,
+  validateDocumentAccess,
+} from '../email/sendProformaTemplate.js';
 import { sendProformaByWhatsapp } from '../whatsapp/sendProformaWhatsappTransporter.js';
 
 const SEND_PROFORMA_COMPANY_RUC_SEPARATOR = ';';
@@ -27,12 +31,12 @@ const SEND_PROFORMA_WHATSAPP_LOG_PREFIX = '[sendProformaWhatsapp]';
 
 type CompanyChannelConfig =
   | {
-    channel: 'email';
-  }
+      channel: 'email';
+    }
   | {
-    channel: 'whatsapp';
-    whatsappApiInstance: string;
-  };
+      channel: 'whatsapp';
+      whatsappApiInstance: string;
+    };
 
 async function findConfiguredCompanyRucs(): Promise<string[]> {
   try {
@@ -50,7 +54,9 @@ async function findConfiguredCompanyRucs(): Promise<string[]> {
 }
 
 async function processSingleEmailTask(task: SendProformaModel): Promise<boolean> {
-  logger.info(`${SEND_PROFORMA_EMAIL_LOG_PREFIX} Iniciando envío de la proforma: ${task.sendprfmaidentificador}`);
+  logger.info(
+    `${SEND_PROFORMA_EMAIL_LOG_PREFIX} Iniciando envío de la proforma: ${task.sendprfmaidentificador}`,
+  );
 
   try {
     const fromAddress = env.smtpFrom ?? task.sendemcorreo;
@@ -103,7 +109,8 @@ async function processSingleEmailTask(task: SendProformaModel): Promise<boolean>
 
     return true;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown send proforma error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Error desconocido al enviar proforma';
 
     if (isFileAccessError(error) && (error.code === 'ENOENT' || error.code === 'EACCES')) {
       logger.error(
@@ -136,7 +143,9 @@ async function processSingleWhatsappTask(
   task: SendProformaModel,
   whatsappApiInstance: string,
 ): Promise<boolean> {
-  logger.info(`${SEND_PROFORMA_WHATSAPP_LOG_PREFIX} Iniciando envío de la proforma: ${task.sendprfmaidentificador}`);
+  logger.info(
+    `${SEND_PROFORMA_WHATSAPP_LOG_PREFIX} Iniciando envío de la proforma: ${task.sendprfmaidentificador}`,
+  );
 
   try {
     logger.info(`${SEND_PROFORMA_WHATSAPP_LOG_PREFIX} Enviando proforma por whatsapp`);
@@ -148,7 +157,8 @@ async function processSingleWhatsappTask(
 
     return true;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown send proforma whatsapp error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Error desconocido al enviar proforma por WhatsApp';
 
     if (isFileAccessError(error) && (error.code === 'ENOENT' || error.code === 'EACCES')) {
       logger.error(
@@ -177,8 +187,14 @@ async function processSingleWhatsappTask(
   }
 }
 
-async function processCompanySendBatch(ruc: string, companyChannelConfig: CompanyChannelConfig): Promise<number> {
-  const pendingTasks = await claimPendingSendProformasByCompanyRuc(ruc, SEND_PROFORMA_PER_COMPANY_LIMIT);
+async function processCompanySendBatch(
+  ruc: string,
+  companyChannelConfig: CompanyChannelConfig,
+): Promise<number> {
+  const pendingTasks = await claimPendingSendProformasByCompanyRuc(
+    ruc,
+    SEND_PROFORMA_PER_COMPANY_LIMIT,
+  );
 
   if (pendingTasks.length === 0) {
     return 0;
@@ -193,20 +209,31 @@ async function processCompanySendBatch(ruc: string, companyChannelConfig: Compan
 
   for (const task of pendingTasks) {
     try {
-      const completed = companyChannelConfig.channel === 'email'
-        ? await processSingleEmailTask(task)
-        : await processSingleWhatsappTask(task, companyChannelConfig.whatsappApiInstance);
+      const completed =
+        companyChannelConfig.channel === 'email'
+          ? await processSingleEmailTask(task)
+          : await processSingleWhatsappTask(task, companyChannelConfig.whatsappApiInstance);
 
       if (completed) {
         completedTasks += 1;
-        logger.info({ sendid: task.sendid }, `${SEND_PROFORMA_LOG_PREFIX} Tarea de envío completada`);
+        logger.info(
+          { sendid: task.sendid },
+          `${SEND_PROFORMA_LOG_PREFIX} Tarea de envío completada`,
+        );
       } else {
-        logger.warn({ sendid: task.sendid }, `${SEND_PROFORMA_LOG_PREFIX} Tarea de envío no completada`);
+        logger.warn(
+          { sendid: task.sendid },
+          `${SEND_PROFORMA_LOG_PREFIX} Tarea de envío no completada`,
+        );
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown send proforma error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error desconocido al enviar proforma';
       await markSendProformaErrorRetryable(task.sendid, errorMessage);
-      logger.error({ sendid: task.sendid, err: error }, `${SEND_PROFORMA_LOG_PREFIX} Error al procesar tarea`);
+      logger.error(
+        { sendid: task.sendid, err: error },
+        `${SEND_PROFORMA_LOG_PREFIX} Error al procesar tarea`,
+      );
     }
   }
 
@@ -293,12 +320,18 @@ async function runSendProformaIteration(): Promise<void> {
         totalSent += sent;
         logger.info({ ruc: cleanedRuc, sent }, `${SEND_PROFORMA_LOG_PREFIX} Empresa procesada`);
       } catch (error) {
-        logger.error({ err: error, ruc: cleanedRuc }, `${SEND_PROFORMA_LOG_PREFIX} Error al procesar empresa`);
+        logger.error(
+          { err: error, ruc: cleanedRuc },
+          `${SEND_PROFORMA_LOG_PREFIX} Error al procesar empresa`,
+        );
       }
     }
 
     if (totalSent > 0) {
-      logger.info({ totalSent }, `${SEND_PROFORMA_LOG_PREFIX} Proformas enviadas en esta iteración`);
+      logger.info(
+        { totalSent },
+        `${SEND_PROFORMA_LOG_PREFIX} Proformas enviadas en esta iteración`,
+      );
     } else {
       logger.info(`${SEND_PROFORMA_LOG_PREFIX} No hay proformas pendientes`);
     }

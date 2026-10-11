@@ -29,8 +29,11 @@ async function findStockAlertConfiguredCompanyRucValue(): Promise<string | undef
     const row = rows[0];
     return row?.cfvalor;
   } catch (error) {
-    logger.error({ err: error }, `${STOCK_ALERT_LOG_PREFIX} Error finding stock alert configured companies`);
-    throw new Error('Error finding stock alert configured companies');
+    logger.error(
+      { err: error },
+      `${STOCK_ALERT_LOG_PREFIX} Error al buscar las empresas configuradas para alertas de stock`,
+    );
+    throw new Error('Error al buscar las empresas configuradas para alertas de stock');
   }
 }
 
@@ -44,8 +47,11 @@ async function findStockAlertCompanyConfigRows(emid: string): Promise<ConfigRow[
   try {
     return await sql.unsafe<ConfigRow[]>(FIND_STOCK_ALERT_COMPANY_CONFIG_ROWS_QUERY, [emid]);
   } catch (error) {
-    logger.error({ err: error, emid }, `${STOCK_ALERT_LOG_PREFIX} Error finding stock alert company config`);
-    throw new Error('Error finding stock alert company config');
+    logger.error(
+      { err: error, emid },
+      `${STOCK_ALERT_LOG_PREFIX} Error al buscar la configuración de alertas de stock de la empresa`,
+    );
+    throw new Error('Error al buscar la configuración de alertas de stock de la empresa');
   }
 }
 

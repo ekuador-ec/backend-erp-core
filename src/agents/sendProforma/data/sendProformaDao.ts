@@ -21,15 +21,23 @@ const CLAIM_PENDING_SEND_PROFORMAS_BY_COMPANY_RUC_QUERY = `
   returning sp.*
 `;
 
-async function claimPendingSendProformasByCompanyRuc(sendemruc: string, limit: number): Promise<SendProformaModel[]> {
+async function claimPendingSendProformasByCompanyRuc(
+  sendemruc: string,
+  limit: number,
+): Promise<SendProformaModel[]> {
   try {
-    return await sql.unsafe<SendProformaModel[]>(CLAIM_PENDING_SEND_PROFORMAS_BY_COMPANY_RUC_QUERY, [
-      sendemruc,
-      limit,
-    ]);
+    return await sql.unsafe<SendProformaModel[]>(
+      CLAIM_PENDING_SEND_PROFORMAS_BY_COMPANY_RUC_QUERY,
+      [sendemruc, limit],
+    );
   } catch (error) {
-    logger.error({ err: error, sendemruc, limit }, `${SEND_PROFORMA_LOG_PREFIX} Error claiming pending send proforma tasks by company ruc`);
-    throw new Error('Error claiming pending send proforma tasks by company ruc');
+    logger.error(
+      { err: error, sendemruc, limit },
+      `${SEND_PROFORMA_LOG_PREFIX} Error al reclamar las tareas pendientes de envío de proforma por RUC de empresa`,
+    );
+    throw new Error(
+      'Error al reclamar las tareas pendientes de envío de proforma por RUC de empresa',
+    );
   }
 }
 
@@ -45,8 +53,11 @@ async function markSendProformaCompleted(sendid: string): Promise<void> {
   try {
     await sql.unsafe(MARK_SEND_PROFORMA_COMPLETED_QUERY, [sendid]);
   } catch (error) {
-    logger.error({ err: error, sendid }, `${SEND_PROFORMA_LOG_PREFIX} Error marking send proforma task as completed`);
-    throw new Error('Error marking send proforma task as completed');
+    logger.error(
+      { err: error, sendid },
+      `${SEND_PROFORMA_LOG_PREFIX} Error al marcar la tarea de envío de proforma como completada`,
+    );
+    throw new Error('Error al marcar la tarea de envío de proforma como completada');
   }
 }
 
@@ -66,8 +77,11 @@ async function markSendProformaErrorRetryable(sendid: string, errorMessage: stri
   try {
     await sql.unsafe(MARK_SEND_PROFORMA_ERROR_RETRYABLE_QUERY, [sendid, errorMessage]);
   } catch (error) {
-    logger.error({ err: error, sendid }, `${SEND_PROFORMA_LOG_PREFIX} Error marking send proforma task as retryable error`);
-    throw new Error('Error marking send proforma task as retryable error');
+    logger.error(
+      { err: error, sendid },
+      `${SEND_PROFORMA_LOG_PREFIX} Error al marcar la tarea de envío de proforma como error reintentable`,
+    );
+    throw new Error('Error al marcar la tarea de envío de proforma como error reintentable');
   }
 }
 
@@ -84,8 +98,11 @@ async function markSendProformaErrorFinal(sendid: string, errorMessage: string):
   try {
     await sql.unsafe(MARK_SEND_PROFORMA_ERROR_FINAL_QUERY, [sendid, errorMessage]);
   } catch (error) {
-    logger.error({ err: error, sendid }, `${SEND_PROFORMA_LOG_PREFIX} Error marking send proforma task as final error`);
-    throw new Error('Error marking send proforma task as final error');
+    logger.error(
+      { err: error, sendid },
+      `${SEND_PROFORMA_LOG_PREFIX} Error al marcar la tarea de envío de proforma como error final`,
+    );
+    throw new Error('Error al marcar la tarea de envío de proforma como error final');
   }
 }
 

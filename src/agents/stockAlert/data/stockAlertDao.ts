@@ -27,7 +27,9 @@ function normalizeLowStockProduct(product: LowStockProductResult): NormalizedLow
   };
 }
 
-function normalizeExistingStockAlert(alert: ExistingStockAlertResult): NormalizedExistingStockAlertResult {
+function normalizeExistingStockAlert(
+  alert: ExistingStockAlertResult,
+): NormalizedExistingStockAlertResult {
   return {
     ...alert,
     alcantidadactual: normalizeNumericValue(alert.alcantidadactual),
@@ -69,13 +71,20 @@ ${LOW_STOCK_PRODUCT_RELATION_JOINS}
     and br.suestado = 'activo'
 `;
 
-async function findLowStockProductsByCompany(emid: string): Promise<NormalizedLowStockProductResult[]> {
+async function findLowStockProductsByCompany(
+  emid: string,
+): Promise<NormalizedLowStockProductResult[]> {
   try {
-    const products = await sql.unsafe<LowStockProductResult[]>(FIND_LOW_STOCK_PRODUCTS_QUERY, [emid]);
+    const products = await sql.unsafe<LowStockProductResult[]>(FIND_LOW_STOCK_PRODUCTS_QUERY, [
+      emid,
+    ]);
     return products.map(normalizeLowStockProduct);
   } catch (error) {
-    logger.error({ err: error, emid }, `${STOCK_ALERT_LOG_PREFIX} Error finding low stock products by company`);
-    throw new Error('Error finding low stock products by company');
+    logger.error(
+      { err: error, emid },
+      `${STOCK_ALERT_LOG_PREFIX} Error al buscar los productos con stock bajo por empresa`,
+    );
+    throw new Error('Error al buscar los productos con stock bajo por empresa');
   }
 }
 
@@ -99,19 +108,18 @@ async function findLowStockProductByStock(
   productId: string,
 ): Promise<NormalizedLowStockProductResult | null> {
   try {
-    const result = await sql.unsafe<LowStockProductResult[]>(FIND_LOW_STOCK_PRODUCT_BY_STOCK_QUERY, [
-      emid,
-      suid,
-      productId,
-    ]);
+    const result = await sql.unsafe<LowStockProductResult[]>(
+      FIND_LOW_STOCK_PRODUCT_BY_STOCK_QUERY,
+      [emid, suid, productId],
+    );
     const product = result[0];
     return product ? normalizeLowStockProduct(product) : null;
   } catch (error) {
     logger.error(
       { err: error, emid, suid, productId },
-      `${STOCK_ALERT_LOG_PREFIX} Error finding low stock product by stock`,
+      `${STOCK_ALERT_LOG_PREFIX} Error al buscar el producto con stock bajo por stock`,
     );
-    throw new Error('Error finding low stock product by stock');
+    throw new Error('Error al buscar el producto con stock bajo por stock');
   }
 }
 
@@ -127,8 +135,11 @@ async function findCompanyIdByRuc(ruc: string): Promise<string | null> {
     const row = rows[0];
     return row?.emid ?? null;
   } catch (error) {
-    logger.error({ err: error, ruc }, `${STOCK_ALERT_LOG_PREFIX} Error finding company id by ruc`);
-    throw new Error('Error finding company id by ruc');
+    logger.error(
+      { err: error, ruc },
+      `${STOCK_ALERT_LOG_PREFIX} Error al buscar el id de empresa por RUC`,
+    );
+    throw new Error('Error al buscar el id de empresa por RUC');
   }
 }
 
@@ -148,7 +159,9 @@ const FIND_STOCK_ALERT_BY_KEY_QUERY = `
   limit 1
 `;
 
-async function findStockAlertByKey(alert: UpsertAlertData): Promise<NormalizedExistingStockAlertResult | null> {
+async function findStockAlertByKey(
+  alert: UpsertAlertData,
+): Promise<NormalizedExistingStockAlertResult | null> {
   try {
     const result = await sql.unsafe<ExistingStockAlertResult[]>(FIND_STOCK_ALERT_BY_KEY_QUERY, [
       alert.alemid,
@@ -161,9 +174,9 @@ async function findStockAlertByKey(alert: UpsertAlertData): Promise<NormalizedEx
   } catch (error) {
     logger.error(
       { err: error, emid: alert.alemid, productId: alert.alprdtoid },
-      `${STOCK_ALERT_LOG_PREFIX} Error finding stock alert by key`,
+      `${STOCK_ALERT_LOG_PREFIX} Error al buscar la alerta de stock por clave`,
     );
-    throw new Error('Error finding stock alert by key');
+    throw new Error('Error al buscar la alerta de stock por clave');
   }
 }
 
@@ -179,10 +192,11 @@ function resolveUpsertAlertStatus(
     return 'reactivated';
   }
 
-  const hasChanges = existingAlert.almensaje !== alert.almensaje
-    || existingAlert.alcantidadactual !== alert.alcantidadactual
-    || existingAlert.alstockminimo !== alert.alstockminimo
-    || existingAlert.alstockmaximo !== alert.alstockmaximo;
+  const hasChanges =
+    existingAlert.almensaje !== alert.almensaje ||
+    existingAlert.alcantidadactual !== alert.alcantidadactual ||
+    existingAlert.alstockminimo !== alert.alstockminimo ||
+    existingAlert.alstockmaximo !== alert.alstockmaximo;
 
   if (hasChanges) {
     return 'updated';
@@ -240,9 +254,15 @@ const REMIND_ALERT_QUERY = `
   returning alid
 `;
 
-async function remindAlert(alid: string, reminderMinutes: number): Promise<UpsertAlertResult | null> {
+async function remindAlert(
+  alid: string,
+  reminderMinutes: number,
+): Promise<UpsertAlertResult | null> {
   try {
-    const result = await sql.unsafe<{ alid: string }[]>(REMIND_ALERT_QUERY, [alid, reminderMinutes]);
+    const result = await sql.unsafe<{ alid: string }[]>(REMIND_ALERT_QUERY, [
+      alid,
+      reminderMinutes,
+    ]);
     const alertDB = result[0];
 
     if (!alertDB) {
@@ -254,12 +274,18 @@ async function remindAlert(alid: string, reminderMinutes: number): Promise<Upser
       status: 'reminded',
     };
   } catch (error) {
-    logger.error({ err: error, alid, reminderMinutes }, `${STOCK_ALERT_LOG_PREFIX} Error reminding alert`);
-    throw new Error('Error reminding alert');
+    logger.error(
+      { err: error, alid, reminderMinutes },
+      `${STOCK_ALERT_LOG_PREFIX} Error al recordar la alerta`,
+    );
+    throw new Error('Error al recordar la alerta');
   }
 }
 
-async function upsertAlert(alert: UpsertAlertData, reminderMinutes?: number): Promise<UpsertAlertResult> {
+async function upsertAlert(
+  alert: UpsertAlertData,
+  reminderMinutes?: number,
+): Promise<UpsertAlertResult> {
   try {
     const existingAlert = await findStockAlertByKey(alert);
     const status = resolveUpsertAlertStatus(existingAlert, alert);
@@ -291,7 +317,7 @@ async function upsertAlert(alert: UpsertAlertData, reminderMinutes?: number): Pr
     ]);
     const alertDB = result[0];
     if (!alertDB) {
-      throw new Error('Alert was not upserted');
+      throw new Error('La alerta no fue registrada');
     }
     return {
       alid: alertDB.alid,
@@ -300,9 +326,9 @@ async function upsertAlert(alert: UpsertAlertData, reminderMinutes?: number): Pr
   } catch (error) {
     logger.error(
       { err: error, emid: alert.alemid, productId: alert.alprdtoid },
-      `${STOCK_ALERT_LOG_PREFIX} Error upserting alert`,
+      `${STOCK_ALERT_LOG_PREFIX} Error al registrar la alerta`,
     );
-    throw new Error('Error upserting alert');
+    throw new Error('Error al registrar la alerta');
   }
 }
 
@@ -345,8 +371,11 @@ async function hideObsoleteAlerts(emid: string): Promise<ResolvedAlertResult[]> 
   try {
     return await sql.unsafe<ResolvedAlertResult[]>(HIDE_OBSOLETE_ALERTS_QUERY, [emid]);
   } catch (error) {
-    logger.error({ err: error, emid }, `${STOCK_ALERT_LOG_PREFIX} Error hiding obsolete alerts`);
-    throw new Error('Error hiding obsolete alerts');
+    logger.error(
+      { err: error, emid },
+      `${STOCK_ALERT_LOG_PREFIX} Error al ocultar las alertas obsoletas`,
+    );
+    throw new Error('Error al ocultar las alertas obsoletas');
   }
 }
 
@@ -379,9 +408,9 @@ async function hideAlertByStock(
   } catch (error) {
     logger.error(
       { err: error, emid, suid, productId },
-      `${STOCK_ALERT_LOG_PREFIX} Error hiding alert by stock`,
+      `${STOCK_ALERT_LOG_PREFIX} Error al ocultar la alerta por stock`,
     );
-    throw new Error('Error hiding alert by stock');
+    throw new Error('Error al ocultar la alerta por stock');
   }
 }
 

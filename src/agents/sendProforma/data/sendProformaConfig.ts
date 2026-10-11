@@ -26,8 +26,11 @@ async function findSendProformaConfiguredCompanyRucValue(): Promise<string | und
     const row = rows[0];
     return row?.cfvalor;
   } catch (error) {
-    logger.error({ err: error }, `${SEND_PROFORMA_LOG_PREFIX} Error finding send proforma configured companies`);
-    throw new Error('Error finding send proforma configured companies');
+    logger.error(
+      { err: error },
+      `${SEND_PROFORMA_LOG_PREFIX} Error al buscar las empresas configuradas para envío de proforma`,
+    );
+    throw new Error('Error al buscar las empresas configuradas para envío de proforma');
   }
 }
 
@@ -41,7 +44,10 @@ async function findSendProformaCompanyConfigRows(sendemid: string): Promise<Conf
   try {
     return await sql.unsafe<ConfigRow[]>(FIND_SEND_PROFORMA_COMPANY_CONFIG_ROWS_QUERY, [sendemid]);
   } catch (error) {
-    logger.error({ err: error, sendemid }, `${SEND_PROFORMA_LOG_PREFIX} Error finding send proforma company config`);
+    logger.error(
+      { err: error, sendemid },
+      `${SEND_PROFORMA_LOG_PREFIX} Error al buscar la configuración de envío de proforma de la empresa`,
+    );
     throw new Error('Error al buscar la configuración de envío de proforma de la empresa');
   }
 }
@@ -126,7 +132,9 @@ async function findSendProformaCompanyWhatsappApi(sendemid: string): Promise<str
   return normalizedValue;
 }
 
-async function findSendProformaCompanyChannel(sendemid: string): Promise<SendProformaChannel | null> {
+async function findSendProformaCompanyChannel(
+  sendemid: string,
+): Promise<SendProformaChannel | null> {
   const configMap = await findSendProformaCompanyConfigMap(sendemid);
   const isEmailActive = readBooleanConfigValue(
     sendemid,

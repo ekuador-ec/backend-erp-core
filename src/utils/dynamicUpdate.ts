@@ -1,6 +1,3 @@
-
-
-
 function buildDynamicUpdateQuery(
   table: string,
   idColumn: string,

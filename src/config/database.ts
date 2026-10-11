@@ -12,7 +12,7 @@ function createDatabaseConnection(): postgres.Sql {
 }
 
 function handleDatabaseNotice(notice: postgres.Notice): void {
-  logger.info({ notice }, 'Database notice');
+  logger.info({ notice }, 'Aviso de la base de datos');
 }
 
 const sql = createDatabaseConnection();

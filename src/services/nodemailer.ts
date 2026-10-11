@@ -36,7 +36,7 @@ async function sendEmail(transporter: Transporter, email: SendEmailParams): Prom
   const { from, to, subject, html, text, attachments } = email;
 
   if (to.length === 0) {
-    logger.warn('Email recipient list is empty. Email was skipped.');
+    logger.warn('La lista de destinatarios está vacía. Se omitió el envío del correo.');
     return;
   }
 
@@ -50,9 +50,9 @@ async function sendEmail(transporter: Transporter, email: SendEmailParams): Prom
       attachments,
     });
 
-    logger.info({ messageId: response.messageId, subject }, 'Email sent successfully');
+    logger.info({ messageId: response.messageId, subject }, 'Correo enviado correctamente');
   } catch (error) {
-    logger.error({ err: error, subject }, 'Failed to send email');
+    logger.error({ err: error, subject }, 'Error al enviar el correo');
     throw error;
   }
 }

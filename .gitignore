@@ -47,7 +47,13 @@ Thumbs.db
 # Recursos
 docs/
 uploads/
-db_ferreteria.sql
 documentacion/
 COMMITS.md
 scripts/
+
+# Database
+db/*
+db/migrations/
+db/migrations/*.sql
+db/seeds/
+db/seeds/*.sql

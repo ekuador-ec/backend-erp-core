@@ -1,0 +1,14 @@
+node_modules
+dist
+uploads
+coverage
+.git
+.vscode
+*.log
+.pnpm-store
+.env
+.env.*
+!.env.example
+Dockerfile
+docker-compose.yml
+.dockerignore

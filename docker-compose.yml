@@ -1,0 +1,83 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-erp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-erp_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-erp}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-erp} -d ${POSTGRES_DB:-erp}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Aplica las migraciones pendientes de db/migrations y termina
+  migrate:
+    image: ghcr.io/amacneil/dbmate
+    command: --wait up
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-erp}:${POSTGRES_PASSWORD:-erp_dev_password}@db:5432/${POSTGRES_DB:-erp}?sslmode=disable
+    volumes:
+      - ./db:/db
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      target: dev
+    env_file: .env
+    environment:
+      # Dentro de la red de Docker la base se llama "db", no "localhost"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-erp}:${POSTGRES_PASSWORD:-erp_dev_password}@db:5432/${POSTGRES_DB:-erp}
+      PUBLIC_BASE_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules   # conserva las dependencias instaladas en la imagen
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Datos de desarrollo (db/seeds/*.sql):
+  #   docker compose --profile seed run --rm seed
+  seed:
+    profiles: ["seed"]
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-erp_dev_password}
+    volumes:
+      - ./db/seeds:/seeds:ro
+    command: >
+      sh -c "for f in /seeds/*.sql; do
+      psql -h db -U ${POSTGRES_USER:-erp} -d ${POSTGRES_DB:-erp} -v ON_ERROR_STOP=1 -f $$f;
+      done"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Frontend (repo hermano ../frontend-erp-app):
+  #   docker compose --profile web up -d --build
+  web:
+    profiles: ["web"]
+    build:
+      context: ../frontend-erp-app
+      target: dev
+    environment:
+      VITE_API_URL: http://localhost:3000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend-erp-app:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

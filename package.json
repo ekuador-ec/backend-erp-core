@@ -1,12 +1,13 @@
 {
-  "name": "esnt-backend-ferreteria",
-  "version": "1.0.0",
-  "description": "Backend API para ferreteria construido con Node.js, TypeScript y Express.",
+  "name": "backend-erp-core",
+  "version": "0.1.0",
+  "description": "Backend API para retail ERP construido con Node.js, TypeScript y Express.",
   "type": "module",
   "main": "dist/server.js",
+  "packageManager": "pnpm@12.10.1",
   "engines": {
-    "node": ">=22.22.1",
-    "npm": ">=10.9.4"
+    "node": ">=24.0.0",
+    "pnpm": ">=12 <13"
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",

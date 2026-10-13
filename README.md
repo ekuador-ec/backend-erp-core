@@ -1,31 +1,43 @@
-# esnt-backend-ferreteria
+# Backend ERP + POS
 
-Backend API para gestion de una ferreteria, construido con Node.js, TypeScript, Express y PostgreSQL.
+Backend para construir una plataforma ERP + POS multiempresa y
+multilicencia, orientada a la gestión de inventarios, ventas y operaciones
+comerciales. El proyecto proporciona una base modular para que distintos
+negocios puedan administrar sus datos, usuarios, sucursales, productos,
+existencias y transacciones desde una misma solución.
 
-El proyecto resuelve tres frentes principales:
+Está construido con Node.js, TypeScript, Express y PostgreSQL.
 
-- API REST autenticada con JWT para el ERP de ferreteria.
-- Generacion de proformas PDF y exposicion de archivos por `/uploads`.
-- Procesos en segundo plano para envio de proformas por correo y generacion de alertas de stock bajo.
+## Objetivos del proyecto
 
-## Que hace el proyecto
+- Centralizar la gestión de inventarios y ventas.
+- Soportar múltiples empresas, sucursales, cajas y usuarios con separación de
+  datos por empresa.
+- Servir como backend para aplicaciones web, móviles y terminales POS.
+- Mantener una arquitectura modular que permita incorporar nuevos módulos
+  administrativos y comerciales.
+- Automatizar procesos operativos, como alertas de stock y envío de
+  documentos por correo o WhatsApp.
 
-La API concentra modulos de negocio para:
+## Estado actual
 
-- autenticacion y manejo de sesion
-- empresas, usuarios, sucursales y cajas
-- catalogos base como categorias, marcas, medidas y proveedores
-- productos, stock y clientes
-- proformas, pago/cancelacion y generacion de PDF
-- configuraciones por empresa
-- alertas de stock con consulta paginada y notificaciones SSE
+La base de código incluye:
 
-Ademas incluye dos agentes asincronos:
+- Autenticación con JWT, refresh tokens y control de acceso por usuario.
+- Gestión de empresas, usuarios, sucursales y cajas.
+- Catálogos de categorías, marcas, unidades de medida y proveedores.
+- Productos, clientes, existencias y alertas de stock.
+- Proformas, métodos de pago y generación de documentos PDF.
+- Configuración por empresa.
+- API REST con paginación, carga de imágenes y notificaciones mediante SSE.
+- Procesos en segundo plano para envío de proformas y alertas de inventario.
 
-- `sendProforma`: envia por correo proformas pendientes con su PDF adjunto
-- `stockAlert`: detecta productos con stock bajo y crea/actualiza alertas
+La plataforma está diseñada para crecer hacia un ERP + POS completo. Los
+módulos que todavía no estén implementados deben incorporarse respetando el
+aislamiento por empresa, las reglas de inventario y la trazabilidad de las
+operaciones.
 
-## Stack tecnico
+## Stack tecnológico
 
 - Node.js `>=22.22.1`
 - npm `>=10.9.4`
@@ -33,26 +45,31 @@ Ademas incluye dos agentes asincronos:
 - Express 5
 - PostgreSQL
 - `postgres` como cliente SQL
-- JWT para autenticacion
-- `multer` para carga de imagenes
+- JWT para autenticación
+- `multer` para carga de imágenes
 - `pdfkit` + `pdfkit-table` para PDFs
 - `nodemailer` para correo
 - `pino` + `morgan` para logging
 
 ## Arquitectura
 
-La API sigue una estructura modular por capas. En la mayoria de modulos se repite este patron:
+La API sigue una estructura modular por capas. En la mayoría de los módulos
+se repite este patrón:
 
-- `dto`: contratos de entrada/salida
-- `model`: tipos del dominio o filas consultadas
-- `dao`: acceso a base de datos
-- `service`: reglas de negocio
-- `controller`: adaptacion HTTP
-- `route`: definicion de endpoints
+- `dto`: contratos de entrada y salida.
+- `model`: tipos del dominio o filas consultadas.
+- `dao`: acceso a la base de datos.
+- `service`: reglas de negocio.
+- `controller`: adaptación HTTP.
+- `route`: definición de endpoints.
 
-El flujo tipico de una peticion es:
+El flujo típico de una petición es:
 
 `route -> controller -> service -> dao -> PostgreSQL`
+
+La información operativa se organiza por empresa y, cuando corresponde, por
+sucursal y caja. Toda funcionalidad nueva debe conservar este alcance y evitar
+que los datos de una empresa sean visibles para otra.
 
 ## Estructura del proyecto
 
@@ -100,88 +117,107 @@ documentacion/
 ecosystem.config.cjs
 ```
 
-## Componentes clave
+## Componentes principales
 
 ### API HTTP
 
-- Punto de entrada: `src/server.ts`
-- Configuracion de Express y rutas: `src/app.ts`
-- Ruta base publica: `GET /`
-- Archivos estaticos: `/uploads`
+- Punto de entrada: `src/server.ts`.
+- Configuración de Express y rutas: `src/app.ts`.
+- Ruta base pública: `GET /`.
+- Archivos estáticos: `/uploads`.
 
 ### Base de datos
 
-- Conexion centralizada en `src/config/database.ts`
-- Se usa `DATABASE_URL` como unica cadena de conexion
-- El repo no incluye migraciones ni schema versionado; la estructura de la BD debe existir previamente
+- Conexión centralizada en `src/config/database.ts`.
+- Se usa `DATABASE_URL` como cadena de conexión.
+- Las migraciones versionadas están en `db/migrations` y se aplican con
+  `dbmate` desde `docker-compose.yml`.
+- Los datos mínimos de desarrollo están en `db/seeds`; no forman parte de la
+  migración del esquema.
 
-### Autenticacion
+### Autenticación y multiempresa
 
-- Login: `POST /auth/login`
-- Refresh: `POST /auth/refresh`
-- Logout: `POST /auth/logout`
-- El middleware `authenticate` valida el bearer token y adjunta `usid`, `usemid` y `usrol` al request
+- Login: `POST /auth/login`.
+- Refresh: `POST /auth/refresh`.
+- Logout: `POST /auth/logout`.
+- El middleware `authenticate` valida el bearer token y adjunta al request el
+  identificador del usuario, la empresa y el rol.
 
-### Proformas y PDFs
+Los endpoints protegidos deben validar siempre el contexto de empresa antes de
+leer o modificar información. La autorización por rol y la separación entre
+empresas son responsabilidades centrales del backend.
 
-- Las proformas se generan y consultan bajo `/proformas`
-- El PDF se construye con `pdfkit` y se guarda en `uploads/proformas/<ruc>/`
-- La plantilla PDF vive en `src/utils/pdf/`
+### Inventario y ventas
 
-### Alertas
+Los módulos actuales de productos, stock, clientes, cajas, métodos de pago y
+proformas forman la base del flujo POS. Sobre ellos pueden implementarse
+ventas, devoluciones, movimientos de inventario, cierres de caja, compras,
+reportes y demás procesos ERP.
 
-- Consulta paginada: `GET /alerts`
-- Streaming SSE: `GET /alerts/events`
-- Marcado como visto: `PATCH /alerts/:id/visto`
+### Documentos y automatizaciones
 
-### Agentes
-
-- `sendProforma` consulta proformas pendientes, arma el correo HTML y adjunta el PDF
-- `stockAlert` revisa stock bajo y alimenta la tabla de alertas
-- Cada agente se ejecuta desde su `task/*Task.ts` y mantiene su propio loop, polling y manejo de senales
+- Las proformas se generan y consultan bajo `/proformas`.
+- Los PDFs se construyen con `pdfkit` y se guardan en
+  `uploads/proformas/<identificador-de-empresa>/`.
+- `sendProforma` envía proformas pendientes por correo o WhatsApp.
+- `stockAlert` detecta productos con stock bajo y crea o actualiza alertas.
 
 ## Requisitos previos
 
-Antes de levantar el proyecto debes tener:
+Antes de levantar el proyecto se necesita:
 
-- Node.js compatible con la version definida en `package.json`
-- npm instalado
-- PostgreSQL disponible
-- variables de entorno configuradas
-- estructura de base de datos ya creada
+- Node.js y npm compatibles con las versiones definidas en `package.json`.
+- Docker Engine y Docker Compose v2 (`docker compose version`) si se usará el
+  entorno Docker.
+- Variables de entorno configuradas.
+- Estructura de base de datos creada, o Docker Compose para que `dbmate` la
+  cree automáticamente.
 
-Para `sendProforma` tambien necesitas:
+Para utilizar `sendProforma` también se necesita:
 
-- acceso SMTP funcional
-- plantilla HTML en `uploads/templates/send-proforma-email.html`
-- configuracion en base de datos para las empresas que enviaran correos
+- Acceso SMTP funcional.
+- Plantilla HTML en `uploads/templates/send-proforma-email.html`.
+- Configuración de correo o WhatsApp para las empresas que enviarán
+  documentos.
 
-## Instalacion
+## Instalación
 
 ```bash
-npm install
 cp .env.example .env
 ```
 
-Luego ajusta `.env` con los valores reales del entorno.
+Luego ajusta `.env` con los valores del entorno. Para trabajar exclusivamente
+con Docker no es necesario instalar las dependencias de Node.js en el host;
+la imagen de desarrollo las instala durante la construcción. `npm install`
+solo es necesario si se ejecutará la API directamente en la máquina local.
 
 ## Variables de entorno
 
 El proyecto carga variables con `dotenv` desde `.env`.
 
-Referencia base:
+Docker Compose también lee este archivo para sustituir expresiones como
+`${POSTGRES_USER:-erp}`. Las variables `POSTGRES_USER`, `POSTGRES_PASSWORD` y
+`POSTGRES_DB` configuran PostgreSQL y se reutilizan para las migraciones, los
+seeds y la conexión interna de la API.
 
-```bash
-cp .env.example .env
-```
+Hay dos direcciones de base de datos válidas:
 
-Valores base de ejemplo:
+| Forma de ejecución | `DATABASE_URL` |
+| --- | --- |
+| API ejecutada en el host (`npm run dev`) | `...@localhost:5433/erp` |
+| API ejecutada en Docker Compose | `...@db:5432/erp` |
+
+Cuando se ejecuta el servicio `api` con Compose, el `DATABASE_URL` definido en
+`docker-compose.yml` sobrescribe el de `.env` para usar el nombre interno
+`db`. El valor de `.env` se conserva para ejecutar la API fuera de Docker.
+
+Ejemplo base:
 
 ```env
 LOG_LEVEL=info
 PORT=3000
-CORS_ORIGIN=*
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/esnt_ferreteria
+CORS_ORIGIN=http://localhost:5173
+DATABASE_URL=postgresql://erp:erp_dev_password@localhost:5433/erp
 PUBLIC_BASE_URL=http://localhost:3000
 JWT_SECRET=change-this-secret-with-at-least-32-characters
 ACCESS_TOKEN_EXPIRES_IN=1h
@@ -192,54 +228,33 @@ SMTP_PORT=587
 SMTP_SECURE=false
 ```
 
-`.env.example` del repositorio actualmente tambien incluye `SMTP_USER`, `SMTP_PASS` y `SMTP_FROM`, pero el flujo actual de `sendProforma` no usa `SMTP_USER` ni `SMTP_PASS` desde `.env` para autenticarse: las credenciales se resuelven por empresa desde la tabla `configuracion`.
-
 ### Requeridas para la API
 
-| Variable | Descripcion |
+| Variable | Descripción |
 | --- | --- |
-| `LOG_LEVEL` | Nivel de logs para `pino` como `info`, `warn`, `error` o `debug`. |
-| `PORT` | Puerto HTTP de la API. Debe ser entero. |
-| `CORS_ORIGIN` | Origen permitido por CORS. Puede ser `*` en desarrollo. |
-| `DATABASE_URL` | Cadena de conexion PostgreSQL completa. |
-| `PUBLIC_BASE_URL` | URL publica base usada para construir rutas de archivos expuestos por `/uploads`. |
-| `JWT_SECRET` | Secreto para firmar tokens. Debe ser fuerte y privado. |
-| `ACCESS_TOKEN_EXPIRES_IN` | Duracion del access token en formato compatible con la libreria JWT, por ejemplo `1h`. |
-| `REFRESH_TOKEN_EXPIRES_IN_HOURS` | Duracion del refresh token en horas. Debe ser entero. |
-| `BCRYPT_SALT_ROUNDS` | Rondas para hashing de password. Debe ser entero. |
+| `LOG_LEVEL` | Nivel de logs: `info`, `warn`, `error` o `debug`. |
+| `PORT` | Puerto HTTP de la API. |
+| `CORS_ORIGIN` | Origen permitido por CORS. |
+| `DATABASE_URL` | Cadena completa de conexión a PostgreSQL. |
+| `PUBLIC_BASE_URL` | URL pública usada para construir rutas de archivos. |
+| `JWT_SECRET` | Secreto privado y fuerte para firmar tokens. |
+| `ACCESS_TOKEN_EXPIRES_IN` | Duración del access token, por ejemplo `1h`. |
+| `REFRESH_TOKEN_EXPIRES_IN_HOURS` | Duración del refresh token en horas. |
+| `BCRYPT_SALT_ROUNDS` | Rondas usadas para generar hashes de contraseñas. |
 
-### Requeridas si usas `sendProforma`
+### Requeridas para `sendProforma`
 
-| Variable | Descripcion |
+| Variable | Descripción |
 | --- | --- |
-| `SMTP_HOST` | Host SMTP, por ejemplo `smtp.gmail.com`. |
-| `SMTP_PORT` | Puerto SMTP. Debe ser entero. |
-| `SMTP_SECURE` | Opcional. Booleano. Acepta `true`, `false`, `1` o `0`. Si no se define, el flujo actual usa `false`. |
-| `WHATSAPP_APICONSULT_TOKEN` | Requerida si una empresa usa el canal WhatsApp de `sendProforma`. Token global para Apiconsult. |
+| `SMTP_HOST` | Host SMTP. |
+| `SMTP_PORT` | Puerto SMTP. |
+| `SMTP_SECURE` | Booleano que indica si se usa conexión segura. |
+| `WHATSAPP_APICONSULT_TOKEN` | Token requerido si se usa el canal WhatsApp. |
 
-### Opcionales
-
-| Variable | Descripcion |
-| --- | --- |
-| `SMTP_FROM` | Remitente por defecto del correo. Si no se define, `sendProforma` usa `task.sendemcorreo` como fallback. |
-| `SMTP_USER` | Variable cargada por `src/config/env.ts`, pero no se usa en la autenticacion actual de `sendProforma`. |
-| `SMTP_PASS` | Variable cargada por `src/config/env.ts`, pero no se usa en la autenticacion actual de `sendProforma`. |
-| `GMAIL_API_KEY` | Variable admitida por `src/config/env.ts`, pero actualmente no participa en la logica activa del proyecto. |
-
-Notas importantes:
-
-- Las variables obligatorias de la API se validan al arrancar el proceso y si faltan, el proyecto falla en startup.
-- `SMTP_HOST` y `SMTP_PORT` son opcionales para la API general, pero necesarias para usar el agente `sendProforma`.
-- Las credenciales del correo del agente no salen de `.env`: se obtienen por empresa desde la tabla `configuracion`.
-- Para `sendProforma`, la empresa debe tener configuradas las claves del canal que vaya a usar.
-- `sendproforma.email.active` y `sendproforma.whatsapp.active` aceptan `true` o `false`.
-- Solo un canal se usa por empresa. Si `sendproforma.email.active` es `true`, email tiene prioridad sobre WhatsApp.
-- Para email, la empresa debe tener `sendproforma.email.user` y `sendproforma.email.password`.
-- Para WhatsApp, la empresa debe tener `sendproforma.whatsapp.api`, que corresponde a la `instance` enviada a Apiconsult.
-- El canal WhatsApp envia el PDF como `file` en base64 para preservar el nombre de la proforma en el archivo recibido.
-- Si falta la configuracion del canal activo o tiene un valor inválido, el agente omite esa empresa.
-- `SMTP_FROM` si puede afectar el comportamiento actual porque se usa como remitente preferido del correo cuando esta definido.
-- `src/config/env.ts` recorta espacios en blanco y valida tipos numericos y booleanos.
+Las credenciales del correo se resuelven por empresa desde la tabla
+`configuracion`. La configuración del canal determina si una proforma se
+envía por correo o WhatsApp; el correo tiene prioridad cuando ambos canales
+están activos.
 
 ## Scripts disponibles
 
@@ -253,9 +268,80 @@ npm run format
 npm run format:check
 ```
 
-## Como levantar el proyecto
+## Cómo levantar el proyecto
 
 ### Desarrollo
+
+#### Opción recomendada: Docker Compose
+
+Docker Compose levanta PostgreSQL, espera a que esté saludable, aplica las
+migraciones pendientes con `dbmate` y después inicia la API:
+
+```bash
+cp .env.example .env
+docker compose up --build api
+```
+
+La API queda disponible en <http://localhost:3000>. El puerto `5433` de la
+máquina local se publica para herramientas externas; entre contenedores se usa
+`db:5432`.
+
+Para cargar la empresa y el usuario administrador de desarrollo:
+
+```bash
+docker compose --profile seed run --rm seed
+```
+
+El usuario inicial es `adminerp@systemconfig.com`, con apodo `adminerp_9999` y
+contraseña `AdminERP_9999!`. Cambia estas credenciales antes de usar este
+entorno fuera de desarrollo.
+
+Para levantar la API, PostgreSQL y también el frontend hermano ubicado en
+`../frontend-erp-app`, ejecuta:
+
+```bash
+docker compose --profile web up --build
+```
+
+El frontend queda disponible en <http://localhost:5173>.
+
+Comandos útiles del entorno Docker:
+
+```bash
+# Ver los servicios y su estado
+docker compose ps
+
+# Ver los logs de la API
+docker compose logs -f api
+
+# Detener los contenedores sin borrar los datos de PostgreSQL
+docker compose down
+
+# Detener los contenedores y eliminar también el volumen de PostgreSQL
+# (borra la base de datos local)
+docker compose down -v
+```
+
+Para revisar la configuración resultante después de interpolar `.env`:
+
+```bash
+docker compose config
+```
+
+No compartas la salida de este comando si contiene contraseñas o tokens.
+
+#### API fuera de Docker
+
+Si se ejecuta la API directamente en el host, primero debe estar disponible
+PostgreSQL en `localhost:5433` y deben instalarse las dependencias:
+
+```bash
+npm install
+npm run dev
+```
+
+En este modo se usa el `DATABASE_URL` de `.env`; dentro de Docker se usa el
+valor interno configurado por Compose.
 
 API:
 
@@ -275,27 +361,22 @@ Agente `stockAlert`:
 node --import tsx src/agents/stockAlert/task/stockAlertTask.ts
 ```
 
-### Produccion
-
-Compila primero:
+### Producción
 
 ```bash
 npm run build
-```
-
-Luego puedes arrancar la API compilada:
-
-```bash
 npm start
 ```
 
-El archivo `ecosystem.config.cjs` existe para PM2, pero actualmente contiene rutas absolutas de despliegue especificas del entorno original. Si vas a reutilizarlo en otra maquina, revisa y ajusta `cwd` y scripts antes de usarlo.
+El archivo `ecosystem.config.cjs` existe para PM2, pero contiene rutas de
+despliegue específicas del entorno original. Revisa y ajusta `cwd` y los
+scripts antes de utilizarlo en otra máquina.
 
-## Modulos y rutas base
+## Módulos y rutas base
 
-Las rutas estan registradas en `src/app.ts`.
+Las rutas están registradas en `src/app.ts`.
 
-| Modulo | Ruta base |
+| Módulo | Ruta base |
 | --- | --- |
 | system | `/` |
 | auth | `/auth` |
@@ -317,15 +398,15 @@ Las rutas estan registradas en `src/app.ts`.
 
 ## Convenciones de la API
 
-### Autenticacion
+### Autenticación
 
-Excepto `GET /` y los endpoints de autenticacion, la API espera:
+Excepto `GET /` y los endpoints de autenticación, la API espera:
 
 ```http
 Authorization: Bearer <token>
 ```
 
-### Paginacion
+### Paginación
 
 Los listados paginados devuelven:
 
@@ -339,105 +420,51 @@ Los listados paginados devuelven:
 }
 ```
 
-### Carga de imagenes
+### Carga de imágenes
 
-El middleware de imagen usa:
-
-- `multipart/form-data`
-- campo `imagen`
-- extensiones permitidas: `.png`, `.jpg`
-- tamano maximo: `5MB`
-
-Las imagenes se guardan bajo `uploads/` y luego se publican como URL usando `PUBLIC_BASE_URL`.
-
-### Rate limiting
-
-La API aplica limites por IP:
-
-- `/auth`: `10` requests por minuto
-- metodos de escritura (`POST`, `PUT`, `PATCH`, `DELETE`): `60` requests por minuto
-- lecturas `GET`: `120` requests por minuto
+El middleware de imágenes usa `multipart/form-data` con el campo `imagen`.
+Acepta `.png` y `.jpg`, con un tamaño máximo de `5MB`. Las imágenes se
+guardan bajo `uploads/` y se publican usando `PUBLIC_BASE_URL`.
 
 ### Seguridad y middleware
 
-- `helmet` para headers de seguridad
-- `cors` configurable por entorno
-- `morgan` conectado a `pino`
-- middleware global de errores y `notFound`
+- `helmet` para headers de seguridad.
+- `cors` configurable por entorno.
+- `morgan` conectado a `pino`.
+- Límites de solicitudes por IP para autenticación, lecturas y escrituras.
+- Middleware global de errores y `notFound`.
 
-## Archivos generados y almacenamiento local
+## Almacenamiento local
 
-El proyecto usa `uploads/` como almacenamiento local para:
+El proyecto usa `uploads/` para almacenar:
 
-- imagenes de empresas
-- imagenes de usuarios
-- imagenes de productos
-- PDFs de proformas
-- plantilla HTML de correo para envio de proformas
+- Imágenes de empresas, usuarios y productos.
+- PDFs de proformas.
+- Plantillas HTML para correo.
 
-Rutas importantes:
+Las rutas más relevantes son:
 
 - `uploads/proformas/`
 - `uploads/templates/send-proforma-email.html`
 
-`uploads/` se expone publicamente desde Express y esta ignorado por git.
-
-## Agentes en detalle
-
-### `sendProforma`
-
-Responsabilidad:
-
-- encontrar proformas pendientes por empresa
-- marcar estado de procesamiento
-- resolver un solo canal por empresa con prioridad email sobre whatsapp
-- enviar la proforma por email o por whatsapp y actualizar el estado final
-
-Dependencias operativas:
-
-- `SMTP_*` en `.env`
-- `WHATSAPP_APICONSULT_TOKEN` en `.env` si usas el canal WhatsApp
-- `uploads/templates/send-proforma-email.html`
-- configuracion global en tabla `configuracion` con clave `sendproforma.email.empresa`
-- configuracion por empresa con claves:
-  - `sendproforma.email.active`
-  - `sendproforma.email.user`
-  - `sendproforma.email.password`
-  - `sendproforma.whatsapp.active`
-  - `sendproforma.whatsapp.api`
-
-### `stockAlert`
-
-Responsabilidad:
-
-- leer empresas configuradas
-- detectar productos con cantidad menor o igual al stock minimo
-- crear o actualizar alertas visibles
-
-Dependencias operativas:
-
-- configuracion global en tabla `configuracion` con clave `stockalert.alerta.empresa`
-
-Comportamiento:
-
-- separa empresas por RUC usando `;`
-- corre una iteracion inicial y luego vuelve a ejecutar cada 5 minutos
+El directorio `uploads/` se expone públicamente desde Express y está ignorado
+por git.
 
 ## Calidad y desarrollo
 
-TypeScript esta configurado en modo estricto con:
+TypeScript está configurado en modo estricto, incluyendo:
 
 - `strict`
 - `noUncheckedIndexedAccess`
 - `exactOptionalPropertyTypes`
 
-La salida compilada va a `dist/`.
+La salida compilada se genera en `dist/`.
 
-## Resumen rapido para una persona nueva
+Para entender el proyecto:
 
-Si entras por primera vez al proyecto, este es el camino mas corto para entenderlo:
-
-1. Revisa `src/app.ts` para ver todas las rutas montadas.
-2. Entra a `src/modules/<modulo>/` para seguir el flujo `route -> controller -> service -> dao`.
-3. Si trabajas con proformas, revisa tambien `src/utils/pdf/` y `uploads/templates/`.
-4. Si trabajas con automatizaciones, entra a `src/agents/`.
+1. Revisa `src/app.ts` para conocer las rutas montadas.
+2. Entra a `src/modules/<modulo>/` y sigue el flujo
+   `route -> controller -> service -> dao`.
+3. Revisa `src/config/` y el middleware de autenticación para entender el
+   contexto multiempresa.
+4. Consulta `src/agents/` para conocer las automatizaciones en segundo plano.

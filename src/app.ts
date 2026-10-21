@@ -22,6 +22,7 @@ import { playmentMethodRouter } from './modules/playmentMethod/playmentMethodRou
 import { proformaRouter } from './modules/proforma/proformaRoute.js';
 import { configRouter } from './modules/config/configRoute.js';
 import { alertRouter } from './modules/alert/alertRoute.js';
+import { permissionRouter } from './modules/permission/permissionRoute.js';
 import { logger } from './utils/logger.js';
 
 const app: express.Express = express();
@@ -118,6 +119,7 @@ app.use('/playment-methods', playmentMethodRouter);
 app.use('/proformas', proformaRouter);
 app.use('/configs', configRouter);
 app.use('/alerts', alertRouter);
+app.use('/permissions', permissionRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 

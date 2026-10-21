@@ -2,6 +2,7 @@ import type { Role } from '../../config/databaseTypes.js';
 import type { LoginUserDto } from '../auth/authDto.js';
 import { findCompanyById } from '../company/companyDao.js';
 import { findUserById } from '../user/userDao.js';
+import { createStatusCodeError } from '../../utils/httpError.js';
 import { logger } from '../../utils/logger.js';
 import type {
   PermissionResponseDto,
@@ -21,6 +22,10 @@ const ROLE_RANK: Record<Role, number> = {
   jefe: 2,
   administrador: 3,
 };
+
+const BAD_REQUEST_STATUS_CODE = 400;
+const FORBIDDEN_STATUS_CODE = 403;
+const NOT_FOUND_STATUS_CODE = 404;
 
 const INVALID_COMPANY_FIND_MESSAGE = 'La empresa no existe';
 const INVALID_COMPANY_STATUS_MESSAGE = 'La empresa no está activa';
@@ -49,11 +54,11 @@ function isPermissionGranted(rol: Role, permission: UserPermissionRowDao): boole
 async function validateRequesterAccess(user: LoginUserDto): Promise<void> {
   const companyDB = await findCompanyById(user.usemid);
   if (!companyDB) {
-    throw new Error(INVALID_COMPANY_FIND_MESSAGE);
+    throw createStatusCodeError(INVALID_COMPANY_FIND_MESSAGE, NOT_FOUND_STATUS_CODE);
   }
 
   if (companyDB.emestado !== 'activo') {
-    throw new Error(INVALID_COMPANY_STATUS_MESSAGE);
+    throw createStatusCodeError(INVALID_COMPANY_STATUS_MESSAGE, FORBIDDEN_STATUS_CODE);
   }
 
   const requesterDB = await findUserById({
@@ -62,15 +67,15 @@ async function validateRequesterAccess(user: LoginUserDto): Promise<void> {
   });
 
   if (!requesterDB) {
-    throw new Error(INVALID_USER_NOT_FOUND_MESSAGE);
+    throw createStatusCodeError(INVALID_USER_NOT_FOUND_MESSAGE, NOT_FOUND_STATUS_CODE);
   }
 
   if (requesterDB.usestado !== 'activo') {
-    throw new Error(INVALID_USER_STATUS_MESSAGE);
+    throw createStatusCodeError(INVALID_USER_STATUS_MESSAGE, FORBIDDEN_STATUS_CODE);
   }
 
   if (!['jefe', 'administrador'].includes(requesterDB.usrol)) {
-    throw new Error(FORBIDDEN_ROL_USER_MESSAGE);
+    throw createStatusCodeError(FORBIDDEN_ROL_USER_MESSAGE, FORBIDDEN_STATUS_CODE);
   }
 }
 
@@ -84,11 +89,11 @@ async function validateTargetUser(
   });
 
   if (!targetDB) {
-    throw new Error(INVALID_TARGET_USER_NOT_FOUND_MESSAGE);
+    throw createStatusCodeError(INVALID_TARGET_USER_NOT_FOUND_MESSAGE, NOT_FOUND_STATUS_CODE);
   }
 
   if (targetDB.usrol === 'administrador') {
-    throw new Error(FORBIDDEN_TARGET_USER_ADMIN_MESSAGE);
+    throw createStatusCodeError(FORBIDDEN_TARGET_USER_ADMIN_MESSAGE, FORBIDDEN_STATUS_CODE);
   }
 
   return {
@@ -99,15 +104,19 @@ async function validateTargetUser(
 
 function validateUpdateItems(permisos: UpdatePermissionItemDto[]): void {
   if (!Array.isArray(permisos) || permisos.length === 0) {
-    throw new Error(EMPTY_PERMISSIONS_MESSAGE);
+    throw createStatusCodeError(EMPTY_PERMISSIONS_MESSAGE, BAD_REQUEST_STATUS_CODE);
   }
 
   for (const item of permisos) {
+    if (!item || typeof item !== 'object') {
+      throw createStatusCodeError(INVALID_PERMISSION_ITEM_MESSAGE, BAD_REQUEST_STATUS_CODE);
+    }
+
     const hasValidCode = typeof item.codigo === 'string' && item.codigo.trim().length > 0;
     const hasValidGrant = typeof item.concedido === 'boolean' || item.concedido === null;
 
     if (!hasValidCode || !hasValidGrant) {
-      throw new Error(INVALID_PERMISSION_ITEM_MESSAGE);
+      throw createStatusCodeError(INVALID_PERMISSION_ITEM_MESSAGE, BAD_REQUEST_STATUS_CODE);
     }
   }
 }
@@ -185,7 +194,7 @@ async function updateUserPermissions(
 
     for (const item of data.permisos) {
       if (!catalogCodes.has(item.codigo)) {
-        throw new Error(INVALID_PERMISSION_CODE_MESSAGE);
+        throw createStatusCodeError(INVALID_PERMISSION_CODE_MESSAGE, BAD_REQUEST_STATUS_CODE);
       }
     }
 

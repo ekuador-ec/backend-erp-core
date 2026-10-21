@@ -8,4 +8,3 @@ function createStatusCodeError(message: string, statusCode: number): Error {
 }
 
 export { createStatusCodeError };
-    

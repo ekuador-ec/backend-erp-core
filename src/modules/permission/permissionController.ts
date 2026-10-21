@@ -43,8 +43,14 @@ const updateUserPermissionsData: RequestHandler = async (req, res, next) => {
       return;
     }
 
-    const body = req.body;
-    const permisos: UpdatePermissionItemDto[] = body.permisos;
+    const body = req.body as { permisos?: unknown } | undefined;
+
+    if (!body || !Array.isArray(body.permisos)) {
+      res.status(400).json({ message: 'La lista de permisos es requerida' });
+      return;
+    }
+
+    const permisos: UpdatePermissionItemDto[] = body.permisos as UpdatePermissionItemDto[];
     const data: UpdateUserPermissionsDto = {
       targetUserId: id,
       permisos,
